@@ -32,6 +32,8 @@ class GameState():
         self.inCheck = False
         self.pins = []
         self.checks = []
+        self.beatingInFlightPossible = ()  # when enemy pawn move 2 square and our pawn is in the same col we can
+        # capture and move pawn 1 square right/left
 
     """
     Takes a Move as a parameter and executes it(this will not work for castling)
@@ -52,6 +54,16 @@ class GameState():
         if move.isPawnPromotion:
             self.board[move.endRow][move.endCol] = move.pieceMoved[0] + 'Q'
 
+        # beating in flight
+        if move.isBeatingInFlightMove:
+            self.board[move.startRow][move.endCol] = '--'  # capturing the pawn
+
+        # update beatingInFlightPossible variable
+        if move.pieceMoved[1] == 'p' and abs(move.startRow - move.endRow) == 2:  #onlt on 2 square pawn advances
+            self.beatingInFlightPossible = ((move.startRow + move.endRow)//2, move.startCol)
+        else:
+            self.beatingInFlightPossible = ()
+
     """
     Undo the last move made
     """
@@ -67,12 +79,21 @@ class GameState():
                 self.whiteKingLocation = (move.startRow, move.startCol)
             elif move.pieceMoved == 'bK':
                 self.blackKingLocation = (move.startRow, move.startCol)
+            # undo beating in flight
+            if move.isBeatingInFlightMove:
+                self.board[move.endRow][move.endCol] = '--'  # leave landing square blank
+                self.board[move.startRow][move.endCol] = move.pieceCaptured
+                self.beatingInFlightPossible = (move.endRow, move.endCol)
+            # undo a 2 square pawn advance
+            if move.pieceMove[1] == 'p' and abs(move.startRow - move.endRow) == 2:
+                self.beatingInFlightPossible = ()
 
     """
     All moves considering checks
     """
 
     def getValidMoves(self):
+        tempBeatingInFlightPossible = self.beatingInFlightPossible
         moves = []
         self.inCheck, self.pins, self.checks = self.checkForPinsAndChecks()
         if self.whiteToMove:
@@ -113,6 +134,7 @@ class GameState():
         else:  # not in check so all moves are fine
             moves = self.getAllPossibleMoves()
 
+        self.beatingInFlightPossible = tempBeatingInFlightPossible
         return moves
 
     """
@@ -136,7 +158,7 @@ class GameState():
     def getPawnMoves(self, r, c, moves):
         piecePinned = False
         pinDirection = ()
-        for i in range(len(self.pins)-1, -1, -1):
+        for i in range(len(self.pins) - 1, -1, -1):
             if self.pins[i][0] == r and self.pins[i][1] == c:
                 piecePinned = True
                 pinDirection = (self.pins[i][2], self.pins[i][3])
@@ -144,23 +166,28 @@ class GameState():
                 break
 
         if self.whiteToMove:  # white pawn moves
-            if self.board[r-1][c] == "--":  # 1 square move
+            if self.board[r - 1][c] == "--":  # 1 square move
                 if not piecePinned or pinDirection == (-1, 0):
-                    moves.append(Move((r, c), (r-1, c), self.board))
-                    if r == 6 and self.board[r-2][c] == "--":  # 2 square moves
-                        moves.append(Move((r, c), (r-2, c), self.board))
-                # captured
-                if c-1 >= 0:  # capture to left
-                    if self.board[r-1][c-1][0] == 'b':
-                        if not piecePinned or pinDirection == (-1, -1):
-                            moves.append(Move((r, c), (r-1, c-1), self.board))
-                if c+1 <= 7:  # capture to right
-                    if self.board[r-1][c+1][0] == 'b':
-                        if not piecePinned or pinDirection == (-1, 1):
-                            moves.append(Move((r, c), (r-1, c+1), self.board))
+                    moves.append(Move((r, c), (r - 1, c), self.board))
+                    if r == 6 and self.board[r - 2][c] == "--":  # 2 square moves
+                        moves.append(Move((r, c), (r - 2, c), self.board))
+            # captured
+            if c - 1 >= 0:  # capture to left
+                if self.board[r - 1][c - 1][0] == 'b':
+                    if not piecePinned or pinDirection == (-1, -1):
+                        moves.append(Move((r, c), (r-1, c-1), self.board))
+                elif (r-1, c-1) == self.beatingInFlightPossible:
+                    moves.append(Move((r, c), (r-1, c-1), self.board, isBeatingInFlightMove=True))
+
+            if c + 1 <= 7:  # capture to right
+                if self.board[r - 1][c + 1][0] == 'b':
+                    if not piecePinned or pinDirection == (-1, 1):
+                        moves.append(Move((r, c), (r - 1, c + 1), self.board))
+                elif (r-1, c+1) == self.beatingInFlightPossible:
+                    moves.append(Move((r, c), (r - 1, c + 1), self.board, isBeatingInFlightMove=True))
 
         else:  # black pawn moves
-            if self.board[r+1][c] == "--":  # 1 square move
+            if self.board[r + 1][c] == "--":  # 1 square move
                 if not piecePinned or pinDirection == (1, 0):
                     moves.append(Move((r, c), (r + 1, c), self.board))
                     if r == 1 and self.board[r + 2][c] == "--":  # 2 square moves
@@ -170,10 +197,14 @@ class GameState():
                 if self.board[r + 1][c - 1][0] == 'w':
                     if not piecePinned or pinDirection == (1, -1):
                         moves.append(Move((r, c), (r + 1, c - 1), self.board))
+                elif (r+1, c-1) == self.beatingInFlightPossible:
+                    moves.append(Move((r, c), (r + 1, c - 1), self.board, isBeatingInFlightMove=True))
             if c + 1 <= 7:  # capture to right
                 if self.board[r + 1][c + 1][0] == "w":
                     if not piecePinned or pinDirection == (1, 1):
                         moves.append(Move((r, c), (r + 1, c + 1), self.board))
+                elif (r+1, c+1) == self.beatingInFlightPossible:
+                    moves.append(Move((r, c), (r + 1, c + 1), self.board, isBeatingInFlightMove=True))
 
     """
     Get all the rook moves for the rook located at row, col and add these moves to the list
@@ -378,7 +409,7 @@ class Move():
                    "e": 4, "f": 5, "g": 6, "h": 7}
     colsToFiles = {v: k for k, v in filesToCols.items()}
 
-    def __init__(self, startSq, endSq, board):
+    def __init__(self, startSq, endSq, board, isBeatingInFlightMove=False):
         self.startRow = startSq[0]
         self.startCol = startSq[1]
         self.endRow = endSq[0]
@@ -386,12 +417,16 @@ class Move():
         self.pieceMoved = board[self.startRow][self.startCol]
         self.pieceCaptured = board[self.endRow][self.endCol]
         self.isPawnPromotion = False
+        self.isBeatingInFlight = False
+        # pawn promotion
         self.promotionChoice = "Q"
-        if (self.pieceMoved == 'wp' and self.endRow == 0) or (self.pieceMoved == 'bp' and self.endRow == 8):
-            self.isPawnPromotion = True
+        self.isPawnPromotion = (self.pieceMoved == 'wp' and self.endRow == 0) or (self.pieceMoved == 'bp' and self.endRow == 7)
+        # en passant
+        self.isBeatingInFlightMove = isBeatingInFlightMove
+        if self.isBeatingInFlightMove:
+            self.pieceCaptured = 'wp' if self.pieceMoved == 'bp' else 'bp'
 
         self.moveId = self.startRow * 1000 + self.startCol * 100 + self.endRow * 10 + self.endCol
-        #  print(self.moveId)
 
     """
     Overriding the equals method
