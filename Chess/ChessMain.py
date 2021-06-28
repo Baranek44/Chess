@@ -66,8 +66,8 @@ def main():
                             moveMade = True
                             sqSelected = ()  # reset user clicks
                             playerClicks = []
-                if not moveMade:
-                    playerClicks = [sqSelected]
+                    if not moveMade:
+                        playerClicks = [sqSelected]
             # key handler
             elif e.type == p.KEYDOWN:
                 if e.key == p.K_z:  # undo when 'z' is pressed
