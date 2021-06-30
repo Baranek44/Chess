@@ -99,7 +99,7 @@ Draw the squares and top left square is always white
 
 
 def drawBoard(screen):
-    colors = [p.Color("white"), p.Color("gray")]
+    colors = [p.Color("blue"), p.Color("yellow")]
     for r in range(DIMENSION):
         for c in range(DIMENSION):
             color = colors[((r + c) % 2)]  # One square white starting on the top left

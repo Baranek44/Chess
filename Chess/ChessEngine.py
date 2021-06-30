@@ -79,9 +79,8 @@ class GameState():
         self.castleRightsLog.append(CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
                                                  self.currentCastlingRight.wqs, self.currentCastlingRight.bqs))
 
-
     """
-    Undo the last move made
+    Undo the last move made  
     """
 
     def undoMove(self):
@@ -106,9 +105,10 @@ class GameState():
 
             # undo castling rights
             self.castleRightsLog.pop()  # get rid of the new castle rights from the move we are undoing
-            newRights = self.castleRightsLog[-1]
             # set the current castle rights to the last one in the list
-            self.currentCastlingRight = self.castleRightsLog[-1]
+            # Fix bugs that we cant castle after back a move!
+            newRights = self.castleRightsLog[-1]
+            self.currentCastlingRight = CastleRights(newRights.wks, newRights.bks, newRights.wqs, newRights.bqs)
             # undo castle move
             if move.isCastleMove:
                 if move.endCol - move.startCol == 2:  # king Side
@@ -160,20 +160,20 @@ class GameState():
     def getValidMoves(self):
         # Help to find a bug in code
 
-        """
         for log in self.castleRightsLog:
             print(log.wks, log.wqs, log.bks, log.bqs, end=", ")
         print()
-        """
 
         tempInFlightPossible = self.inFlightPossible
         tempCastleRights = CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
                                         self.currentCastlingRight.wqs, self.currentCastlingRight.bqs)
-        moves = self.getAllPossibleMoves()
+
+        moves = self.getAllPossibleMoves()  # Here generate all possible moves
         if self.whiteToMove:
-            self.getCastleMoves(self.whiteKingLocation[0], self.whiteKingLocation[1], moves)
+            self.getCastleMoves(self.whiteKingLocation[0], self.whiteKingLocation[1],moves)
         else:
             self.getCastleMoves(self.blackKingLocation[0], self.blackKingLocation[1], moves)
+
         for i in range(len(moves)-1, -1, -1):
             self.makeMove(moves[i])
             self.whiteToMove = not self.whiteToMove
@@ -186,9 +186,6 @@ class GameState():
                 self.checkMate = True
             else:
                 self.staleMate = True
-        else:
-            self.checkMate = False
-            self.staleMate = False
 
         self.inFlightPossible = tempInFlightPossible
         self.currentCastlingRight = tempCastleRights
@@ -369,7 +366,7 @@ class GameState():
     def getKingSideCastleMoves(self, r, c, moves):
         if self.board[r][c+1] == '--' and self.board[r][c+2] == '--':
             if not self.squareUnderAttack(r, c+1) and not self.squareUnderAttack(r, c+2):
-                moves.append(Move((r, c), (r, c+2), self.board, isCastleMove = True))
+                moves.append(Move((r, c), (r, c+2), self.board, isCastleMove=True))
 
     def getQueenSideCastleMoves(self, r, c, moves):
         if self.board[r][c-1] == '--' and self.board[r][c-2] == '--' and self.board[r][c-3] == '--':
