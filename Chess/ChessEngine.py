@@ -140,6 +140,7 @@ class GameState():
                     self.currentCastlingRight.bqs = False
                 elif move.startCol == 7:
                     self.currentCastlingRight.bks = False
+        # There is a option that we cant castle when rook is captured
         if move.pieceCaptured == 'wR':
             if move.endRow == 7:
                 if move.endCol == 0:
@@ -159,10 +160,11 @@ class GameState():
 
     def getValidMoves(self):
         # Help to find a bug in code
-
+        """
         for log in self.castleRightsLog:
             print(log.wks, log.wqs, log.bks, log.bqs, end=", ")
         print()
+        """
 
         tempInFlightPossible = self.inFlightPossible
         tempCastleRights = CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
