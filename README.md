@@ -3,5 +3,7 @@ This program simulates chess and allows you to perform all the moves established
 
 ## Setup
 & git clone https://github.com/Baranek44/Chess
+
 & pip install pygame 
+
 & python main.go
